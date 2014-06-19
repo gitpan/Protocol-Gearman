@@ -1,0 +1,69 @@
+{
+   "abstract" : "wire protocol support functions for Gearman",
+   "author" : [
+      "Paul Evans <leonerd@leonerd.org.uk>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4205",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Protocol-Gearman",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Test::Fatal" : "0",
+            "Test::HexString" : "0",
+            "Test::More" : "0.88"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Future" : "0",
+            "IO::Socket::IP" : "0",
+            "Struct::Dumb" : "0"
+         }
+      }
+   },
+   "provides" : {
+      "Protocol::Gearman" : {
+         "file" : "lib/Protocol/Gearman.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Base" : {
+         "file" : "lib/Protocol/Gearman/Base.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Client" : {
+         "file" : "lib/Protocol/Gearman/Client.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Client::Connection" : {
+         "file" : "lib/Protocol/Gearman/Client/Connection.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Connection" : {
+         "file" : "lib/Protocol/Gearman/Connection.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Worker" : {
+         "file" : "lib/Protocol/Gearman/Worker.pm",
+         "version" : "0.01"
+      },
+      "Protocol::Gearman::Worker::Connection" : {
+         "file" : "lib/Protocol/Gearman/Worker/Connection.pm",
+         "version" : "0.01"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "0.01"
+}

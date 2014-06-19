@@ -1,0 +1,88 @@
+NAME
+    `Protocol::Gearman' - wire protocol support functions for Gearman
+
+DESCRIPTION
+    This module provides the low-level functions required to implement a
+    Gearman connection (either a client or a worker). It is used primarily
+    by other modules in this distribution; it is not intended to be used
+    directly.
+
+    For implementing a Gearman client or worker, see the modules
+
+    * Protocol::Gearman::Client
+
+    * Protocol::Gearman::Worker
+
+    For a simple synchronous Gearman client or worker module for use during
+    testing or similar, see
+
+    * Protocol::Gearman::Client::Connection
+
+    * Protocol::Gearman::Worker::Connection
+
+CONSTANTS
+    The following families of constants are defined, along with export tags:
+
+  TYPE_* (:types)
+    The request/response types
+
+FUNCTIONS
+  ( $type, $body ) = parse_packet( $bytes )
+    Attempts to parse a complete message packet from the given byte string.
+    If it succeeds, it returns the type and data body, as an opaque byte
+    string. If it fails it returns an empty list.
+
+    If successful, it will remove the bytes of the packet form the `$bytes'
+    scalar, which must therefore be mutable.
+
+    If the byte string begins with some bytes that are not recognised as the
+    Gearman packet magic for a response, the function will immediately throw
+    an exception before modifying the string.
+
+  ( $type, $body ) = recv_packet( $fh )
+    Attempts to read a complete packet from the given filehandle, blocking
+    until it is available. The results are undefined if this function is
+    called on a non-blocking filehandle.
+
+    If an IO error happens, an exception is thrown. If the first four bytes
+    read are not recognised as the Gearman packet magic for a response, the
+    function will immediately throw an exception. If either of these
+    conditions happen, the filehandle should be considered no longer valid
+    and should be closed.
+
+  $bytes = build_packet( $type, $body )
+    Returns a byte string containing a complete packet with the given
+    fields.
+
+  send_packet( $fh, $type, $body )
+    Sends a complete packet to the given filehandle. If an IO error happens,
+    an exception is thrown.
+
+  ( $type, $body ) = pack_packet( $name, @args )
+    Given a name of a packet type (specified as a string as the name of one
+    of the `TYPE_*' constants, without the leading `TYPE_' prefix; case
+    insignificant) returns the type value and the arguments for the packet
+    packed into a body string. This is intended for passing directly into
+    `build_packet' or `send_packet':
+
+     send_packet $fh, pack_packet( SUBMIT_JOB => $func, $id, $arg );
+
+  ( $name, @args ) = unpack_packet( $type, $body )
+    Given a type code and body string, returns the type name and unpacked
+    arguments from the body. This function is the reverse of `pack_packet'
+    and is intended to be used on the result of `parse_packet' or
+    `recv_packet':
+
+    The returned `$name' will always be a fully-captialised type name, as
+    one of the `TYPE_*' constants without the leading `TYPE_' prefix.
+
+    This is intended for a `given/when' control block, or dynamic method
+    dispatch:
+
+     my ( $name, @args ) = unpack_packet( recv_packet $fh );
+
+     $self->${\"handle_$name"}( @args )
+
+AUTHOR
+    Paul Evans <leonerd@leonerd.org.uk>
+

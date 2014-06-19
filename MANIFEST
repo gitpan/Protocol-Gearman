@@ -1,0 +1,25 @@
+Build.PL
+Changes
+doc/PROTOCOL
+examples/client.pl
+examples/worker.pl
+lib/Protocol/Gearman.pm
+lib/Protocol/Gearman/Base.pm
+lib/Protocol/Gearman/Client.pm
+lib/Protocol/Gearman/Client/Connection.pm
+lib/Protocol/Gearman/Connection.pm
+lib/Protocol/Gearman/Worker.pm
+lib/Protocol/Gearman/Worker/Connection.pm
+MANIFEST			This list of files
+t/00use.t
+t/01packet.t
+t/02pack-unpack.t
+t/10base.t
+t/11client.t
+t/12worker.t
+t/99pod.t
+Makefile.PL
+README
+LICENSE
+META.yml
+META.json
