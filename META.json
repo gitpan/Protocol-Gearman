@@ -1,5 +1,5 @@
 {
-   "abstract" : "wire protocol support functions for Gearman",
+   "abstract" : "abstract base class for both client and worker",
    "author" : [
       "Paul Evans <leonerd@leonerd.org.uk>"
    ],
@@ -30,33 +30,29 @@
       }
    },
    "provides" : {
+      "Net::Gearman" : {
+         "file" : "lib/Net/Gearman.pm",
+         "version" : "0.02"
+      },
+      "Net::Gearman::Client" : {
+         "file" : "lib/Net/Gearman/Client.pm",
+         "version" : "0.02"
+      },
+      "Net::Gearman::Worker" : {
+         "file" : "lib/Net/Gearman/Worker.pm",
+         "version" : "0.02"
+      },
       "Protocol::Gearman" : {
          "file" : "lib/Protocol/Gearman.pm",
-         "version" : "0.01"
-      },
-      "Protocol::Gearman::Base" : {
-         "file" : "lib/Protocol/Gearman/Base.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       },
       "Protocol::Gearman::Client" : {
          "file" : "lib/Protocol/Gearman/Client.pm",
-         "version" : "0.01"
-      },
-      "Protocol::Gearman::Client::Connection" : {
-         "file" : "lib/Protocol/Gearman/Client/Connection.pm",
-         "version" : "0.01"
-      },
-      "Protocol::Gearman::Connection" : {
-         "file" : "lib/Protocol/Gearman/Connection.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       },
       "Protocol::Gearman::Worker" : {
          "file" : "lib/Protocol/Gearman/Worker.pm",
-         "version" : "0.01"
-      },
-      "Protocol::Gearman::Worker::Connection" : {
-         "file" : "lib/Protocol/Gearman/Worker/Connection.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       }
    },
    "release_status" : "stable",
@@ -65,5 +61,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.01"
+   "version" : "0.02"
 }

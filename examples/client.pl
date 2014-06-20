@@ -3,16 +3,16 @@
 use strict;
 use warnings;
 
-use Protocol::Gearman::Client::Connection;
+use Net::Gearman::Client;
 
 my $func = shift @ARGV // die "Need func\n";
 my $arg  = shift @ARGV // die "Need arg\n";
 
-my $conn = Protocol::Gearman::Client::Connection->new(
+my $client = Net::Gearman::Client->new(
    PeerAddr => "127.0.0.1",
 ) or die "Cannot connect - $@\n";
 
-my $result = $conn->submit_job(
+my $result = $client->submit_job(
    func => $func,
    arg  => $arg,
 

@@ -3,18 +3,18 @@
 #
 #  (C) Paul Evans, 2014 -- leonerd@leonerd.org.uk
 
-package Protocol::Gearman::Connection;
+package Net::Gearman;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use base qw( IO::Socket::IP );
 
 =head1 NAME
 
-C<Protocol::Gearman::Connection> - provide a synchronous concrete implementation
+C<Net::Gearman> - provide a synchronous concrete Gearman implementation
 
 =head1 DESCRIPTION
 
@@ -26,11 +26,11 @@ shouldn't be used directly; see instead
 
 =item *
 
-L<Protocol::Gearman::Client::Connection>
+L<Net::Gearman::Client>
 
 =item *
 
-L<Protocol::Gearman::Worker::Connection>
+L<Net::Gearman::Worker>
 
 =back
 
@@ -38,11 +38,11 @@ L<Protocol::Gearman::Worker::Connection>
 
 =cut
 
-=head2 $connection = Protocol::Gearman::Connection->new( %args )
+=head2 $gearman = Net::Gearman->new( %args )
 
-Returns a new C<Protocol::Gearman::Connection> object. Takes the same
-arguments as C<IO::Socket::IP>. Sets a default value for C<PeerService> if not
-provided of 4730.
+Returns a new C<Net::Gearman> object. Takes the same arguments as
+C<IO::Socket::IP>. Sets a default value for C<PeerService> if not provided of
+4730.
 
 =cut
 
@@ -65,7 +65,7 @@ sub gearman_state
 sub new_future
 {
    my $self = shift;
-   return Protocol::Gearman::Connection::Future->new( $self );
+   return Net::Gearman::Future->new( $self );
 }
 
 sub do_read
@@ -82,15 +82,15 @@ sub do_read
 }
 
 package # hide
-   Protocol::Gearman::Connection::Future;
+   Net::Gearman::Future;
 use base qw( Future );
 
 sub new
 {
    my $class = shift;
-   my ( $conn ) = @_;
+   my ( $gearman ) = @_;
    my $self = $class->SUPER::new;
-   $self->{conn} = $conn;
+   $self->{gearman} = $gearman;
    return $self;
 }
 
@@ -99,7 +99,7 @@ sub await
    my $self = shift;
 
    while( !$self->is_ready ) {
-      $self->{conn}->do_read;
+      $self->{gearman}->do_read;
    }
 }
 

@@ -3,26 +3,25 @@
 #
 #  (C) Paul Evans, 2014 -- leonerd@leonerd.org.uk
 
-package Protocol::Gearman::Worker::Connection;
+package Net::Gearman::Worker;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-use base qw( Protocol::Gearman::Connection Protocol::Gearman::Worker );
+use base qw( Net::Gearman Protocol::Gearman::Worker );
 
 =head1 NAME
 
-C<Protocol::Gearman::Worker::Connection> - concrete Gearman worker over an IP
-socket
+C<Net::Gearman::Worker> - concrete Gearman worker over an IP socket
 
 =head1 SYNOPSIS
 
  use List::Util qw( sum );
- use Protocol::Gearman::Worker::Connection;
+ use Net::Gearman::Worker;
 
- my $worker = Protocol::Gearman::Worker::Connection->new(
+ my $worker = Net::Gearman::Worker->new(
     PeerAddr => $SERVER,
  ) or die "Cannot connect - $@\n";
 
@@ -39,8 +38,8 @@ socket
 =head1 DESCRIPTION
 
 This module combines the abstract L<Protocol::Gearman::Worker> with
-L<Protocol::Gearman::Connection> to provide a simple synchronous concrete
-worker implementation.
+L<Net::Gearman> to provide a simple synchronous concrete worker
+implementation.
 
 =cut
 

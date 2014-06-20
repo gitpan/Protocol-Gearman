@@ -8,26 +8,20 @@ package Protocol::Gearman;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
-
-use Exporter 'import';
-our @EXPORT_OK = qw(
-   parse_packet recv_packet
-   build_packet send_packet
-   pack_packet unpack_packet
-);
+our $VERSION = '0.02';
 
 use Carp;
 
 =head1 NAME
 
-C<Protocol::Gearman> - wire protocol support functions for Gearman
+C<Protocol::Gearman> - abstract base class for both client and worker
 
 =head1 DESCRIPTION
 
-This module provides the low-level functions required to implement a Gearman
-connection (either a client or a worker). It is used primarily by other
-modules in this distribution; it is not intended to be used directly.
+This base class is used by both L<Protocol::Gearman::Client> and
+L<Protocol::Gearman::Worker>. It shouldn't be used directly by end-user
+implementations. It is documented here largely to explain what methods an end
+implementation needs to provide in order to create a Gearman client or worker.
 
 For implementing a Gearman client or worker, see the modules
 
@@ -50,25 +44,40 @@ testing or similar, see
 
 =item *
 
-L<Protocol::Gearman::Client::Connection>
+L<Net::Gearman::Client>
 
 =item *
 
-L<Protocol::Gearman::Worker::Connection>
+L<Net::Gearman::Worker>
 
 =back
 
 =cut
 
-=head1 CONSTANTS
+=head1 REQUIRED METHODS
 
-The following families of constants are defined, along with export tags:
+The implementation should provide the following methods:
 
-=head2 TYPE_* (:types)
+=head2 $f = $gearman->new_future
 
-The request/response types
+Return a new L<Future> subclass instance, for request methods to use. This
+instance should support awaiting appropriately.
+
+=head2 $gearman->send( $bytes )
+
+Send the given bytes to the server.
+
+=head2 $h = $gearman->gearman_state
+
+Return a HASH reference for the Gearman-related code to store its state on.
+If not implemented, a default method will be provided which uses C<$gearman>
+itself, for the common case of HASH-based objects. All the Gearman-related
+state will be stored in keys whose names are prefixed by C<gearman_>, to avoid
+clashes with other object state.
 
 =cut
+
+sub gearman_state { shift }
 
 # These are used internally but not exported
 use constant {
@@ -114,17 +123,16 @@ my %CONSTANTS = (
 
 require constant;
 constant->import( $_, $CONSTANTS{$_} ) for keys %CONSTANTS;
-push @EXPORT_OK, keys %CONSTANTS;
 
-our %EXPORT_TAGS = (
-   'types' => [ grep { m/^TYPE_/  } keys %CONSTANTS ],
-);
+=head1 INTERNAL METHODS
 
-=head1 FUNCTIONS
+These methods are provided for the client and worker subclasses to use; it is
+unlikely these will be of interest to other users but they are documented here
+for completeness.
 
 =cut
 
-=head2 ( $type, $body ) = parse_packet( $bytes )
+=head2 ( $type, $body ) = $gearman->parse_packet( $bytes )
 
 Attempts to parse a complete message packet from the given byte string. If it
 succeeds, it returns the type and data body, as an opaque byte string. If it
@@ -141,6 +149,8 @@ exception before modifying the string.
 
 sub parse_packet
 {
+   shift;
+
    return unless length $_[0] >= 4;
    croak "Expected to find 'RES' magic in packet" unless
       unpack( "a4", $_[0] ) eq MAGIC_RESPONSE;
@@ -157,7 +167,7 @@ sub parse_packet
    return ( $type, $body );
 }
 
-=head2 ( $type, $body ) = recv_packet( $fh )
+=head2 ( $type, $body ) = $gearman->recv_packet( $fh )
 
 Attempts to read a complete packet from the given filehandle, blocking until
 it is available. The results are undefined if this function is called on a
@@ -172,6 +182,7 @@ filehandle should be considered no longer valid and should be closed.
 
 sub recv_packet
 {
+   shift;
    my ( $fh ) = @_;
 
    $fh->read( my $magic, 4 ) or croak "Cannot read header - $!";
@@ -187,7 +198,7 @@ sub recv_packet
    return ( $type, $body );
 }
 
-=head2 $bytes = build_packet( $type, $body )
+=head2 $bytes = $gearman->build_packet( $type, $body )
 
 Returns a byte string containing a complete packet with the given fields.
 
@@ -195,12 +206,13 @@ Returns a byte string containing a complete packet with the given fields.
 
 sub build_packet
 {
+   shift;
    my ( $type, $body ) = @_;
 
    return pack "a4 N N a*", MAGIC_REQUEST, $type, length $body, $body;
 }
 
-=head2 send_packet( $fh, $type, $body )
+=head2 $gearman->send_packet( $fh, $type, $body )
 
 Sends a complete packet to the given filehandle. If an IO error happens, an
 exception is thrown.
@@ -209,8 +221,9 @@ exception is thrown.
 
 sub send_packet
 {
+   my $self = shift;
    my $fh = shift;
-   $fh->print( build_packet( @_ ) ) or croak "Cannot send packet - $!";
+   $fh->print( $self->build_packet( @_ ) ) or croak "Cannot send packet - $!";
 }
 
 # All Gearman packet bodies follow a standard format, of a fixed number of
@@ -261,7 +274,7 @@ my %ARGS_FOR_TYPE = (
    JOB_ASSIGN_UNIQ    => 4,
 );
 
-=head2 ( $type, $body ) = pack_packet( $name, @args )
+=head2 ( $type, $body ) = $gearman->pack_packet( $name, @args )
 
 Given a name of a packet type (specified as a string as the name of one of the
 C<TYPE_*> constants, without the leading C<TYPE_> prefix; case insignificant)
@@ -275,6 +288,7 @@ C<send_packet>:
 
 sub pack_packet
 {
+   shift;
    my ( $typename, @args ) = @_;
 
    my $typefn = __PACKAGE__->can( "TYPE_\U$typename" ) or
@@ -290,7 +304,7 @@ sub pack_packet
    return ( $type, join "\0", @args );
 }
 
-=head2 ( $name, @args ) = unpack_packet( $type, $body )
+=head2 ( $name, @args ) = $gearman->unpack_packet( $type, $body )
 
 Given a type code and body string, returns the type name and unpacked
 arguments from the body. This function is the reverse of C<pack_packet> and is
@@ -310,6 +324,7 @@ dispatch:
 
 sub unpack_packet
 {
+   shift;
    my ( $type, $body ) = @_;
 
    my $typename = $TYPENAMES{$type} or
@@ -319,6 +334,57 @@ sub unpack_packet
 
    return ( $typename ) if $n_args == 0;
    return ( $typename, split m/\0/, $body, $n_args );
+}
+
+=head2 $gearman->pack_send_packet( $typename, @args )
+
+Packs a packet from a list of arguments then sends it; a combination of
+C<pack_packet> and C<build_packet>. Uses the implementation's C<send> method.
+
+=cut
+
+sub pack_send_packet
+{
+   my $self = shift;
+   $self->send( $self->build_packet( $self->pack_packet( @_ ) ) );
+}
+
+=head2 $gearman->on_read( $buffer )
+
+The implementation should call this method on receipt of more bytes of data.
+It parses and unpacks packets from the buffer, then dispatches to the
+appropriately named C<on_*> method. A combination of C<parse_packet> and
+C<unpack_packet>.
+
+The C<$buffer> scalar may be modified; if it still contains bytes left over
+after the call these should be preserved by the implementation for the next
+time it is called.
+
+=cut
+
+sub on_read
+{
+   my $self = shift;
+
+   while( my ( $typenum, $body ) = $self->parse_packet( $_[0] ) ) {
+      my ( $type, @args ) = $self->unpack_packet( $typenum, $body );
+      $self->${\"on_$type"}( @args );
+   }
+}
+
+=head2 $gearman->on_ERROR( $name, $message )
+
+Default handler for the C<TYPE_ERROR> packet. This method should be overriden
+by subclasses to change the behaviour.
+
+=cut
+
+sub on_ERROR
+{
+   my $self = shift;
+   my ( $name, $message ) = @_;
+
+   die "Received Gearman error '$name' (\"$message\")\n";
 }
 
 =head1 AUTHOR

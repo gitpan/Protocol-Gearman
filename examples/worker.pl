@@ -3,9 +3,9 @@
 use strict;
 use warnings;
 
-use Protocol::Gearman::Worker::Connection;
+use Net::Gearman::Worker;
 
-my $worker = Protocol::Gearman::Worker::Connection->new(
+my $worker = Net::Gearman::Worker->new(
    PeerAddr => "127.0.0.1",
 ) or die "Cannot connect - $@\n";
 

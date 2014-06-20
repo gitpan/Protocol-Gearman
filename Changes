@@ -1,5 +1,11 @@
 Revision history for Protocol-Gearman
 
+0.02    2014/06/21 00:29:29
+        [CHANGES]
+         * Move concrete ::Connection classes to new Net::Gearman heirarchy
+         * Move Protocol::Gearman::Base functionallity into Protocol::Gearman
+           itself; make that into an object class
+
 0.01    2014/06/19 22:30:50
         First version, released on an unsuspecting world.
 

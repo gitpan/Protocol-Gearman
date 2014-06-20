@@ -8,9 +8,9 @@ package Protocol::Gearman::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-use base qw( Protocol::Gearman::Base );
+use base qw( Protocol::Gearman );
 
 use Carp;
 
@@ -22,8 +22,8 @@ C<Protocol::Gearman::Worker> - a simple synchronous Gearman worker binding
 
 A base class that implements a complete Gearman worker. This abstract class
 still requires the implementation methods as documented in
-L<Protocol::Gearman::Base>, but otherwise provides a full set of behaviour
-useful to Gearman workers.
+L<Protocol::Gearman>, but otherwise provides a full set of behaviour useful to
+Gearman workers.
 
 As it is based on L<Future> it is suitable for both synchronous and
 asynchronous use. When backed by an implementation capable of performing
@@ -33,7 +33,7 @@ instances but the limitations of the synchronous implementation may limit how
 much concurrency and asynchronous behaviour can be acheived.
 
 A simple concrete implementation suitable for synchronous use can be found in
-L<Protocol::Gearman::Worker::Connection>.
+L<Net::Gearman::Worker>.
 
 =cut
 

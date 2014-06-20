@@ -3,25 +3,24 @@
 #
 #  (C) Paul Evans, 2014 -- leonerd@leonerd.org.uk
 
-package Protocol::Gearman::Client::Connection;
+package Net::Gearman::Client;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-use base qw( Protocol::Gearman::Connection Protocol::Gearman::Client );
+use base qw( Net::Gearman Protocol::Gearman::Client );
 
 =head1 NAME
 
-C<Protocol::Gearman::Client::Connection> - concrete Gearman client over an IP
-socket
+C<Net::Gearman::Client> - concrete Gearman client over an IP socket
 
 =head1 SYNOPSIS
 
- use Protocol::Gearman::Client::Connection;
+ use Net::Gearman::Client;
 
- my $client = Protocol::Gearman::Client::Connection->new(
+ my $client = Net::Gearman::Client->new(
     PeerAddr => $SERVER,
  ) or die "Cannot connect - $@\n";
 
@@ -35,8 +34,8 @@ socket
 =head1 DESCRIPTION
 
 This module combines the abstract L<Protocol::Gearman::Client> with
-L<Protocol::Gearman::Connection> to provide a simple synchronous concrete
-client implementation.
+L<Net::Gearman> to provide a simple synchronous concrete client
+implementation.
 
 =cut
 

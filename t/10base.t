@@ -9,7 +9,7 @@ use Test::HexString;
 
 {
    package TestBase;
-   use base qw( Protocol::Gearman::Base );
+   use base qw( Protocol::Gearman );
 
    sub new { bless {}, shift }
 }
