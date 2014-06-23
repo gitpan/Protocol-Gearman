@@ -1,5 +1,14 @@
 Revision history for Protocol-Gearman
 
+0.03    2014/06/23 17:35:18
+        [CHANGES]
+         * Renamed many methods on the base Protocol::Gearman class
+         * Provide a 'job_finished' method on Worker for subclasses to
+           override
+
+        [BUGFIXES]
+         * Declare depends on perl version >= 5.010 for // operator
+
 0.02    2014/06/21 00:29:29
         [CHANGES]
          * Move concrete ::Connection classes to new Net::Gearman heirarchy

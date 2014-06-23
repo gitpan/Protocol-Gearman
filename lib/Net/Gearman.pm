@@ -8,7 +8,7 @@ package Net::Gearman;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use base qw( IO::Socket::IP );
 
@@ -74,9 +74,9 @@ sub do_read
 
    my $buffer = $self->gearman_state->{gearman_buffer} // "";
 
-   # TODO: consider an on_read_packet to make this more efficient
+   # TODO: consider an on_recv_packet to make this more efficient
    $self->sysread( $buffer, 8192, length $buffer );
-   $self->on_read( $buffer );
+   $self->on_recv( $buffer );
 
    $self->gearman_state->{gearman_buffer} = $buffer;
 }

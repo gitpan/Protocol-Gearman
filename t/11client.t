@@ -22,7 +22,7 @@ my $client = TestClient->new;
 # submit job
 {
    no warnings 'once';
-   local *TestClient::pack_send_packet = sub {
+   local *TestClient::send_packet = sub {
       my $self = shift;
       my ( $type, @args ) = @_;
 

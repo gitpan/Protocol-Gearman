@@ -24,7 +24,7 @@ my $worker = TestWorker->new;
    my $received;
 
    no warnings 'once';
-   local *TestWorker::pack_send_packet = sub {
+   local *TestWorker::send_packet = sub {
       shift;
       my ( $type, @args ) = @_;
 
@@ -48,7 +48,7 @@ my $job;
    my $received_presleep;
 
    no warnings 'once';
-   local *TestWorker::pack_send_packet = sub {
+   local *TestWorker::send_packet = sub {
       my $self = shift;
       my ( $type, @args ) = @_;
 
@@ -87,16 +87,23 @@ my $job;
    my @received;
 
    no warnings 'once';
-   local *TestWorker::pack_send_packet = sub {
+   local *TestWorker::send_packet = sub {
       shift;
       my ( $type, @args ) = @_;
       push @received, [ $type => @args ];
+   };
+
+   my $finished;
+   local *TestWorker::job_finished = sub {
+      $finished++;
    };
 
    $job->status( 0, 1 );
    $job->data( "moredata" );
    $job->warning( "Ooops?" );
    $job->status( 1, 1 );
+
+   is( $finished, undef, '$finished still undef before ->complete' );
 
    $job->complete( "result" );
 
@@ -109,6 +116,8 @@ my $job;
      ],
       'Packets sent by job update methods'
    );
+
+   is( $finished, 1, '$finished after ->complete' );
 }
 
 done_testing;

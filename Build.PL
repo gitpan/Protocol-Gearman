@@ -9,6 +9,7 @@ my $build = Module::Build->new(
       'Future' => 0,
       'IO::Socket::IP' => 0,
       'Struct::Dumb' => 0,
+      'perl' => '5.010', # //
    },
    build_requires => {
       'Test::Fatal' => 0,

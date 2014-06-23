@@ -7,8 +7,9 @@ package Protocol::Gearman::Client;
 
 use strict;
 use warnings;
+use 5.010; # //
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use base qw( Protocol::Gearman );
 
@@ -113,7 +114,7 @@ sub submit_job
       );
    });
 
-   $self->pack_send_packet( SUBMIT_JOB => $func, $state->{gearman_next_id}++, $arg );
+   $self->send_packet( SUBMIT_JOB => $func, $state->{gearman_next_id}++, $arg );
 
    return $f;
 }

@@ -8,7 +8,7 @@ package Protocol::Gearman::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use base qw( Protocol::Gearman );
 
@@ -16,7 +16,7 @@ use Carp;
 
 =head1 NAME
 
-C<Protocol::Gearman::Worker> - a simple synchronous Gearman worker binding
+C<Protocol::Gearman::Worker> - implement a Gearman worker
 
 =head1 DESCRIPTION
 
@@ -52,7 +52,7 @@ sub can_do
    my $self = shift;
    my ( $name ) = @_;
 
-   $self->pack_send_packet( CAN_DO => $name );
+   $self->send_packet( CAN_DO => $name );
 }
 
 =head2 $worker->grab_job ==> $job
@@ -70,7 +70,7 @@ sub grab_job
 
    push @{ $state->{gearman_assigns} }, my $f = $self->new_future;
 
-   $self->pack_send_packet( GRAB_JOB => );
+   $self->send_packet( GRAB_JOB => );
 
    return $f;
 }
@@ -92,7 +92,7 @@ sub on_NO_JOB
 {
    my $self = shift;
 
-   $self->pack_send_packet( PRE_SLEEP => );
+   $self->send_packet( PRE_SLEEP => );
 }
 
 sub on_NOOP
@@ -101,8 +101,19 @@ sub on_NOOP
 
    my $state = $self->gearman_state;
 
-   $self->pack_send_packet( GRAB_JOB => ) if @{ $state->{gearman_assigns} };
+   $self->send_packet( GRAB_JOB => ) if @{ $state->{gearman_assigns} };
 }
+
+=head2 $worker->job_finished( $job )
+
+Invoked by the C<complete> and C<fail> methods on a job object, after the
+server has been informed of the final status of the job. By default this
+method does nothing, but it is provided for subclasses to override, to be
+informed when a job is finished.
+
+=cut
+
+sub job_finished { }
 
 package # hide from CPAN
    Protocol::Gearman::Worker::Job;
@@ -163,7 +174,7 @@ sub data
    my $self = shift;
    my ( $data ) = @_;
 
-   $self->worker->pack_send_packet( WORK_DATA => $self->handle, $data );
+   $self->worker->send_packet( WORK_DATA => $self->handle, $data );
 }
 
 =head2 $job->warning( $warning )
@@ -177,7 +188,7 @@ sub warning
    my $self = shift;
    my ( $warning ) = @_;
 
-   $self->worker->pack_send_packet( WORK_WARNING => $self->handle, $warning );
+   $self->worker->send_packet( WORK_WARNING => $self->handle, $warning );
 }
 
 =head2 $job->status( $numerator, $denominator )
@@ -191,7 +202,7 @@ sub status
    my $self = shift;
    my ( $num, $denom ) = @_;
 
-   $self->worker->pack_send_packet( WORK_STATUS => $self->handle, $num, $denom );
+   $self->worker->send_packet( WORK_STATUS => $self->handle, $num, $denom );
 }
 
 =head2 $job->complete( $result )
@@ -205,7 +216,8 @@ sub complete
    my $self = shift;
    my ( $result ) = @_;
 
-   $self->worker->pack_send_packet( WORK_COMPLETE => $self->handle, $result );
+   $self->worker->send_packet( WORK_COMPLETE => $self->handle, $result );
+   $self->worker->job_finished( $self );
 }
 
 =head2 $job->fail
@@ -218,7 +230,8 @@ sub fail
 {
    my $self = shift;
 
-   $self->worker->pack_send_packet( WORK_FAIL => $self->handle );
+   $self->worker->send_packet( WORK_FAIL => $self->handle );
+   $self->worker->job_finished( $self );
 }
 
 =head1 AUTHOR

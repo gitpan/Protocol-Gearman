@@ -8,7 +8,7 @@ package Protocol::Gearman;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 
@@ -132,100 +132,6 @@ for completeness.
 
 =cut
 
-=head2 ( $type, $body ) = $gearman->parse_packet( $bytes )
-
-Attempts to parse a complete message packet from the given byte string. If it
-succeeds, it returns the type and data body, as an opaque byte string. If it
-fails it returns an empty list.
-
-If successful, it will remove the bytes of the packet form the C<$bytes>
-scalar, which must therefore be mutable.
-
-If the byte string begins with some bytes that are not recognised as the
-Gearman packet magic for a response, the function will immediately throw an
-exception before modifying the string.
-
-=cut
-
-sub parse_packet
-{
-   shift;
-
-   return unless length $_[0] >= 4;
-   croak "Expected to find 'RES' magic in packet" unless
-      unpack( "a4", $_[0] ) eq MAGIC_RESPONSE;
-
-   return unless length $_[0] >= 12;
-
-   my $bodylen = unpack( "x8 N", $_[0] );
-   return unless length $_[0] >= 12 + $bodylen;
-
-   # Now committed to extracting it
-   my ( $type ) = unpack( "x4 N x4", substr $_[0], 0, 12, "" );
-   my $body = substr $_[0], 0, $bodylen, "";
-
-   return ( $type, $body );
-}
-
-=head2 ( $type, $body ) = $gearman->recv_packet( $fh )
-
-Attempts to read a complete packet from the given filehandle, blocking until
-it is available. The results are undefined if this function is called on a
-non-blocking filehandle.
-
-If an IO error happens, an exception is thrown. If the first four bytes read
-are not recognised as the Gearman packet magic for a response, the function
-will immediately throw an exception. If either of these conditions happen, the
-filehandle should be considered no longer valid and should be closed.
-
-=cut
-
-sub recv_packet
-{
-   shift;
-   my ( $fh ) = @_;
-
-   $fh->read( my $magic, 4 ) or croak "Cannot read header - $!";
-   croak "Expected to find 'RES' magic in packet" unless
-      $magic eq MAGIC_RESPONSE;
-
-   $fh->read( my $header, 8 ) or croak "Cannot read header - $!";
-   my ( $type, $bodylen ) = unpack( "N N", $header );
-
-   my $body = "";
-   $fh->read( $body, $bodylen ) or croak "Cannot read body - $!" if $bodylen;
-
-   return ( $type, $body );
-}
-
-=head2 $bytes = $gearman->build_packet( $type, $body )
-
-Returns a byte string containing a complete packet with the given fields.
-
-=cut
-
-sub build_packet
-{
-   shift;
-   my ( $type, $body ) = @_;
-
-   return pack "a4 N N a*", MAGIC_REQUEST, $type, length $body, $body;
-}
-
-=head2 $gearman->send_packet( $fh, $type, $body )
-
-Sends a complete packet to the given filehandle. If an IO error happens, an
-exception is thrown.
-
-=cut
-
-sub send_packet
-{
-   my $self = shift;
-   my $fh = shift;
-   $fh->print( $self->build_packet( @_ ) ) or croak "Cannot send packet - $!";
-}
-
 # All Gearman packet bodies follow a standard format, of a fixed number of
 # string arguments (given by the packet type), separated by a single NUL byte.
 # All but the final argument may not contain embedded NULs.
@@ -336,24 +242,118 @@ sub unpack_packet
    return ( $typename, split m/\0/, $body, $n_args );
 }
 
-=head2 $gearman->pack_send_packet( $typename, @args )
+=head2 ( $name, @args ) = $gearman->parse_packet_from_string( $bytes )
+
+Attempts to parse a complete message packet from the given byte string. If it
+succeeds, it returns the type name and arguments. If it fails it returns an
+empty list.
+
+If successful, it will remove the bytes of the packet form the C<$bytes>
+scalar, which must therefore be mutable.
+
+If the byte string begins with some bytes that are not recognised as the
+Gearman packet magic for a response, the function will immediately throw an
+exception before modifying the string.
+
+=cut
+
+sub parse_packet_from_string
+{
+   my $self = shift;
+
+   return unless length $_[0] >= 4;
+   croak "Expected to find 'RES' magic in packet" unless
+      unpack( "a4", $_[0] ) eq MAGIC_RESPONSE;
+
+   return unless length $_[0] >= 12;
+
+   my $bodylen = unpack( "x8 N", $_[0] );
+   return unless length $_[0] >= 12 + $bodylen;
+
+   # Now committed to extracting it
+   my ( $type ) = unpack( "x4 N x4", substr $_[0], 0, 12, "" );
+   my $body = substr $_[0], 0, $bodylen, "";
+
+   return $self->unpack_packet( $type, $body );
+}
+
+=head2 ( $name, @args ) = $gearman->recv_packet_from_fh( $fh )
+
+Attempts to read a complete packet from the given filehandle, blocking until
+it is available. The results are undefined if this function is called on a
+non-blocking filehandle.
+
+If an IO error happens, an exception is thrown. If the first four bytes read
+are not recognised as the Gearman packet magic for a response, the function
+will immediately throw an exception. If either of these conditions happen, the
+filehandle should be considered no longer valid and should be closed.
+
+=cut
+
+sub recv_packet_from_fh
+{
+   my $self = shift;
+   my ( $fh ) = @_;
+
+   $fh->read( my $magic, 4 ) or croak "Cannot read header - $!";
+   croak "Expected to find 'RES' magic in packet" unless
+      $magic eq MAGIC_RESPONSE;
+
+   $fh->read( my $header, 8 ) or croak "Cannot read header - $!";
+   my ( $type, $bodylen ) = unpack( "N N", $header );
+
+   my $body = "";
+   $fh->read( $body, $bodylen ) or croak "Cannot read body - $!" if $bodylen;
+
+   return $self->unpack_packet( $type, $body );
+}
+
+=head2 $bytes = $gearman->build_packet_to_string( $name, @args )
+
+Returns a byte string containing a complete packet with the given fields.
+
+=cut
+
+sub build_packet_to_string
+{
+   my $self = shift;
+   my ( $type, $body ) = $self->pack_packet( @_ );
+
+   return pack "a4 N N a*", MAGIC_REQUEST, $type, length $body, $body;
+}
+
+=head2 $gearman->send_packet_to_fh( $fh, $name, @args )
+
+Sends a complete packet to the given filehandle. If an IO error happens, an
+exception is thrown.
+
+=cut
+
+sub send_packet_to_fh
+{
+   my $self = shift;
+   my $fh = shift;
+   $fh->print( $self->build_packet_to_string( @_ ) ) or croak "Cannot send packet - $!";
+}
+
+=head2 $gearman->send_packet( $typename, @args )
 
 Packs a packet from a list of arguments then sends it; a combination of
 C<pack_packet> and C<build_packet>. Uses the implementation's C<send> method.
 
 =cut
 
-sub pack_send_packet
+sub send_packet
 {
    my $self = shift;
-   $self->send( $self->build_packet( $self->pack_packet( @_ ) ) );
+   $self->send( $self->build_packet_to_string( @_ ) );
 }
 
-=head2 $gearman->on_read( $buffer )
+=head2 $gearman->on_recv( $buffer )
 
-The implementation should call this method on receipt of more bytes of data.
-It parses and unpacks packets from the buffer, then dispatches to the
-appropriately named C<on_*> method. A combination of C<parse_packet> and
+The implementation should call this method when more bytes of data have been
+received. It parses and unpacks packets from the buffer, then dispatches to
+the appropriately named C<on_*> method. A combination of C<parse_packet> and
 C<unpack_packet>.
 
 The C<$buffer> scalar may be modified; if it still contains bytes left over
@@ -362,15 +362,16 @@ time it is called.
 
 =cut
 
-sub on_read
+sub on_recv
 {
    my $self = shift;
 
-   while( my ( $typenum, $body ) = $self->parse_packet( $_[0] ) ) {
-      my ( $type, @args ) = $self->unpack_packet( $typenum, $body );
+   while( my ( $type, @args ) = $self->parse_packet_from_string( $_[0] ) ) {
       $self->${\"on_$type"}( @args );
    }
 }
+
+*on_read = \&on_recv;
 
 =head2 $gearman->on_ERROR( $name, $message )
 

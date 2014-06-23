@@ -43,37 +43,6 @@ INTERNAL METHODS
     it is unlikely these will be of interest to other users but they are
     documented here for completeness.
 
-  ( $type, $body ) = $gearman->parse_packet( $bytes )
-    Attempts to parse a complete message packet from the given byte string.
-    If it succeeds, it returns the type and data body, as an opaque byte
-    string. If it fails it returns an empty list.
-
-    If successful, it will remove the bytes of the packet form the `$bytes'
-    scalar, which must therefore be mutable.
-
-    If the byte string begins with some bytes that are not recognised as the
-    Gearman packet magic for a response, the function will immediately throw
-    an exception before modifying the string.
-
-  ( $type, $body ) = $gearman->recv_packet( $fh )
-    Attempts to read a complete packet from the given filehandle, blocking
-    until it is available. The results are undefined if this function is
-    called on a non-blocking filehandle.
-
-    If an IO error happens, an exception is thrown. If the first four bytes
-    read are not recognised as the Gearman packet magic for a response, the
-    function will immediately throw an exception. If either of these
-    conditions happen, the filehandle should be considered no longer valid
-    and should be closed.
-
-  $bytes = $gearman->build_packet( $type, $body )
-    Returns a byte string containing a complete packet with the given
-    fields.
-
-  $gearman->send_packet( $fh, $type, $body )
-    Sends a complete packet to the given filehandle. If an IO error happens,
-    an exception is thrown.
-
   ( $type, $body ) = $gearman->pack_packet( $name, @args )
     Given a name of a packet type (specified as a string as the name of one
     of the `TYPE_*' constants, without the leading `TYPE_' prefix; case
@@ -99,16 +68,47 @@ INTERNAL METHODS
 
      $self->${\"handle_$name"}( @args )
 
-  $gearman->pack_send_packet( $typename, @args )
+  ( $name, @args ) = $gearman->parse_packet_from_string( $bytes )
+    Attempts to parse a complete message packet from the given byte string.
+    If it succeeds, it returns the type name and arguments. If it fails it
+    returns an empty list.
+
+    If successful, it will remove the bytes of the packet form the `$bytes'
+    scalar, which must therefore be mutable.
+
+    If the byte string begins with some bytes that are not recognised as the
+    Gearman packet magic for a response, the function will immediately throw
+    an exception before modifying the string.
+
+  ( $name, @args ) = $gearman->recv_packet_from_fh( $fh )
+    Attempts to read a complete packet from the given filehandle, blocking
+    until it is available. The results are undefined if this function is
+    called on a non-blocking filehandle.
+
+    If an IO error happens, an exception is thrown. If the first four bytes
+    read are not recognised as the Gearman packet magic for a response, the
+    function will immediately throw an exception. If either of these
+    conditions happen, the filehandle should be considered no longer valid
+    and should be closed.
+
+  $bytes = $gearman->build_packet_to_string( $name, @args )
+    Returns a byte string containing a complete packet with the given
+    fields.
+
+  $gearman->send_packet_to_fh( $fh, $name, @args )
+    Sends a complete packet to the given filehandle. If an IO error happens,
+    an exception is thrown.
+
+  $gearman->send_packet( $typename, @args )
     Packs a packet from a list of arguments then sends it; a combination of
     `pack_packet' and `build_packet'. Uses the implementation's `send'
     method.
 
-  $gearman->on_read( $buffer )
-    The implementation should call this method on receipt of more bytes of
-    data. It parses and unpacks packets from the buffer, then dispatches to
-    the appropriately named `on_*' method. A combination of `parse_packet'
-    and `unpack_packet'.
+  $gearman->on_recv( $buffer )
+    The implementation should call this method when more bytes of data have
+    been received. It parses and unpacks packets from the buffer, then
+    dispatches to the appropriately named `on_*' method. A combination of
+    `parse_packet' and `unpack_packet'.
 
     The `$buffer' scalar may be modified; if it still contains bytes left
     over after the call these should be preserved by the implementation for
