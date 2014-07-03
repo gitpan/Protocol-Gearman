@@ -12,6 +12,8 @@ my $client = Net::Gearman::Client->new(
    PeerAddr => "127.0.0.1",
 ) or die "Cannot connect - $@\n";
 
+$client->option_request( "exceptions" )->get;
+
 my $result = $client->submit_job(
    func => $func,
    arg  => $arg,
@@ -25,11 +27,13 @@ my $result = $client->submit_job(
       my ( $num, $denom ) = @_;
       print STDERR "\e[1;36mStatus $num / $denom\e[m...\n";
    },
-)->get;
+)->on_done( sub {
+   my ( $result ) = @_;
 
-if( defined $result ) {
    print $result . "\n";
-}
-else {
-   print STDERR "Job Failed\n";
-}
+})->on_fail( sub {
+   my ( $msg, $name, $exception ) = @_;
+
+   print STDERR "FAIL: $msg\n";
+   print STDERR " >> $exception\n" if defined $name and $name eq "gearman" and defined $exception;
+})->await;

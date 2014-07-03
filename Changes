@@ -1,5 +1,20 @@
 Revision history for Protocol-Gearman
 
+0.04    2014/07/03 19:24:39
+        [CHANGES]
+         * Implement background and high/low priority job submission
+         * Support more Gearman features:
+            + CAN_DO_TIMEOUT
+            + OPTION_REQ
+            + ECHO_REQ
+            + WORK_EXCEPTION
+         * Support prototypical objects as well as subclassing
+         * Added unit tests for Net::Gearman classes
+
+        [BUGFIXES]
+         * Don't attempt to non-blocking drain a pipe, as it upsets MSWin32's
+           delicate sensibilities (RT96732)
+
 0.03    2014/06/23 17:35:18
         [CHANGES]
          * Renamed many methods on the base Protocol::Gearman class

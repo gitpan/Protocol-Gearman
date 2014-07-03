@@ -49,11 +49,8 @@ use Protocol::Gearman;
    $wr->syswrite( "No magic here" );
    ok( exception { Protocol::Gearman->recv_packet_from_fh( $rd ) },
        'recv_packet dies with no magic' );
-   {
-      $rd->blocking(0);
-      $rd->sysread( my $tmp, 8192 ); # drain
-      $rd->blocking(1);
-   }
+
+    # Note to self: can't use $rd any more as it has junk in it
 }
 
 done_testing;

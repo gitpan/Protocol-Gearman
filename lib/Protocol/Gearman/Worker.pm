@@ -8,7 +8,7 @@ package Protocol::Gearman::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use base qw( Protocol::Gearman );
 
@@ -41,18 +41,37 @@ L<Net::Gearman::Worker>.
 
 =cut
 
-=head2 $worker->can_do( $name )
+=head2 $worker->can_do( $name, %opts )
 
 Informs the server that the worker can perform a function of the given name.
+
+The following named options are recognised:
+
+=over 8
+
+=item timeout => INT
+
+If specified, the function is registered using the C<CAN_DO_TIMEOUT> variant,
+which sets a timeout on the Gearman server after which the function ought to
+have completed. The timeout is specified in seconds.
+
+=back
 
 =cut
 
 sub can_do
 {
    my $self = shift;
-   my ( $name ) = @_;
+   my ( $name, %opts ) = @_;
 
-   $self->send_packet( CAN_DO => $name );
+   my $timeout = $opts{timeout};
+
+   if( defined $timeout ) {
+      $self->send_packet( CAN_DO_TIMEOUT => $name, int $timeout );
+   }
+   else {
+      $self->send_packet( CAN_DO => $name );
+   }
 }
 
 =head2 $worker->grab_job ==> $job
@@ -220,15 +239,24 @@ sub complete
    $self->worker->job_finished( $self );
 }
 
-=head2 $job->fail
+=head2 $job->fail( $exception )
 
 Informs the server that the job has failed.
+
+Optionally an exception value can be supplied; if given this will be sent to
+the server using a C<WORK_EXCEPTION> message. Note that not all clients will
+receive this; it is an optional feature.
 
 =cut
 
 sub fail
 {
    my $self = shift;
+   my ( $exception ) = @_;
+
+   if( defined $exception ) {
+      $self->worker->send_packet( WORK_EXCEPTION => $self->handle, $exception );
+   }
 
    $self->worker->send_packet( WORK_FAIL => $self->handle );
    $self->worker->job_finished( $self );

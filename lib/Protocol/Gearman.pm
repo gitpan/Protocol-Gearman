@@ -8,9 +8,10 @@ package Protocol::Gearman;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
+use Scalar::Util qw( reftype );
 
 =head1 NAME
 
@@ -58,14 +59,38 @@ L<Net::Gearman::Worker>
 
 The implementation should provide the following methods:
 
+=cut
+
 =head2 $f = $gearman->new_future
 
 Return a new L<Future> subclass instance, for request methods to use. This
 instance should support awaiting appropriately.
 
+=cut
+
+sub new_future
+{
+   my $self = shift;
+   reftype $self eq "HASH" and ref( my $code = $self->{gearman_method_new_future} ) eq "CODE" or
+      croak "Can't locate object method \"new_future\" via package ".ref($self).", or it is not a prototypical object";
+
+   $code->( $self, @_ );
+}
+
 =head2 $gearman->send( $bytes )
 
 Send the given bytes to the server.
+
+=cut
+
+sub send
+{
+   my $self = shift;
+   reftype $self eq "HASH" and ref( my $code = $self->{gearman_method_send} ) eq "CODE" or
+      croak "Can't locate object method \"send\" via package ".ref($self).", or it is not a prototypical object";
+
+   $code->( $self, @_ );
+}
 
 =head2 $h = $gearman->gearman_state
 
@@ -386,6 +411,78 @@ sub on_ERROR
    my ( $name, $message ) = @_;
 
    die "Received Gearman error '$name' (\"$message\")\n";
+}
+
+=head2 $gearman->echo_request( $payload ) ==> ( $payload )
+
+Sends an C<ECHO_REQ> packet to the Gearman server, and returns a future that
+will eventually yield the payload when the server responds.
+
+=cut
+
+sub echo_request
+{
+   my $self = shift;
+   my ( $payload ) = @_;
+
+   my $state = $self->gearman_state;
+
+   push @{ $state->{gearman_echos} }, my $f = $self->new_future;
+
+   $self->send_packet( ECHO_REQ => $payload );
+
+   return $f;
+}
+
+sub on_ECHO_RES
+{
+   my $self = shift;
+   my ( $payload ) = @_;
+
+   my $state = $self->gearman_state;
+
+   ( shift @{ $state->{gearman_echos} } )->done( $payload );
+}
+
+=head1 PROTOTYPICAL OBJECTS
+
+An alternative option to subclassing to provide the missing methods, is to use
+C<Protocol::Gearman> (or rather, one of the client or worker subclasses) as a
+prototypical object, passing in CODE references for the missing methods to a
+special constructor that creates a concrete object.
+
+This may be more convenient to use in smaller one-shot cases (like unit tests
+or small scripts) instead of creating a subclass.
+
+ my $socket = ...;
+
+ my $client = Protocol::Gearman::Client->new_prototype(
+    send       => sub { $socket->print( $_[1] ); },
+    new_future => sub { My::Future::Subclass->new },
+ );
+
+=head2 $gearman = Protocol::Gearman->new_prototype( %methods )
+
+Returns a new prototypical object constructed using the given methods. The
+named arguments must give values for the C<send> and C<new_future> methods.
+
+=cut
+
+sub new_prototype
+{
+   my $class = shift;
+   my %methods = @_;
+
+   my $self = bless {}, $class;
+
+   foreach (qw( send new_future )) {
+      defined $methods{$_} and ref $methods{$_} eq "CODE" or
+         croak "Expected to receive a CODE reference for '$_'";
+
+      $self->{"gearman_method_$_"} = $methods{$_};
+   }
+
+   return $self;
 }
 
 =head1 AUTHOR

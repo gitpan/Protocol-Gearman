@@ -7,6 +7,8 @@ use Test::More;
 use Test::Fatal;
 use Test::HexString;
 
+use Future;
+
 {
    package TestBase;
    use base qw( Protocol::Gearman );
@@ -55,6 +57,27 @@ ok( defined $base, '$base defined' );
 
    like( exception { $base->on_recv( $buffer ) },
       qr/"This call failed"/, 'automatic ERROR packet handling' );
+}
+
+# echo_request
+{
+   no warnings 'once';
+   local *TestBase::new_future = sub {
+      return Future->new;
+   };
+   local *TestBase::send_packet = sub {
+      my $self = shift;
+      my ( $type, @args ) = @_;
+
+      is( $type,    "ECHO_REQ", '$type for sent packet by ->echo_request' );
+      is( $args[0], "payload",  '$args[0] for sent packet by ->echo_request' );
+
+      $self->on_ECHO_RES( $args[0] );
+   };
+
+   my $payload = $base->echo_request( "payload" )->get;
+
+   is( $payload, "payload", '->echo_request->get yields payload' );
 }
 
 done_testing;

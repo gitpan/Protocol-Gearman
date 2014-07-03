@@ -118,6 +118,31 @@ INTERNAL METHODS
     Default handler for the `TYPE_ERROR' packet. This method should be
     overriden by subclasses to change the behaviour.
 
+  $gearman->echo_request( $payload ) ==> ( $payload )
+    Sends an `ECHO_REQ' packet to the Gearman server, and returns a future
+    that will eventually yield the payload when the server responds.
+
+PROTOTYPICAL OBJECTS
+    An alternative option to subclassing to provide the missing methods, is
+    to use `Protocol::Gearman' (or rather, one of the client or worker
+    subclasses) as a prototypical object, passing in CODE references for the
+    missing methods to a special constructor that creates a concrete object.
+
+    This may be more convenient to use in smaller one-shot cases (like unit
+    tests or small scripts) instead of creating a subclass.
+
+     my $socket = ...;
+
+     my $client = Protocol::Gearman::Client->new_prototype(
+        send       => sub { $socket->print( $_[1] ); },
+        new_future => sub { My::Future::Subclass->new },
+     );
+
+  $gearman = Protocol::Gearman->new_prototype( %methods )
+    Returns a new prototypical object constructed using the given methods.
+    The named arguments must give values for the `send' and `new_future'
+    methods.
+
 AUTHOR
     Paul Evans <leonerd@leonerd.org.uk>
 

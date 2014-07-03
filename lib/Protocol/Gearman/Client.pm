@@ -9,15 +9,15 @@ use strict;
 use warnings;
 use 5.010; # //
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use base qw( Protocol::Gearman );
 
 use Carp;
 
-use Struct::Dumb qw( readonly_struct );
+use Struct::Dumb;
 
-readonly_struct Job => [qw( f on_data on_warning on_status )];
+struct Job => [qw( f on_data on_warning on_status exception )];
 
 =head1 NAME
 
@@ -46,6 +46,47 @@ L<Net::Gearman::Client>.
 
 =cut
 
+=head2 $client->option_request( $option ) ==> ()
+
+Requests that the Gearman server enable the named option for this connection.
+
+The following options are defined by Gearman:
+
+=over 8
+
+=item * C<exceptions>
+
+Enables the use of the C<WORK_EXCEPTION> packet; meaning the client is happy
+to receive them.
+
+=back
+
+=cut
+
+sub option_request
+{
+   my $self = shift;
+   my ( $option ) = @_;
+
+   my $state = $self->gearman_state;
+
+   my $request_f = $self->new_future;
+   $state->{gearman_option_reqs}{$option} = $request_f;
+
+   $self->send_packet( OPTION_REQ => $option );
+
+   return $request_f;
+}
+
+sub on_OPTION_RES
+{
+   my $self = shift;
+   my ( $option ) = @_;
+
+   my $state = $self->gearman_state;
+   ( delete $state->{gearman_option_reqs}{$option} )->done();
+}
+
 =head2 $client->submit_job( %args ) ==> $result
 
 Submits a job request to the Gearman server, and returns a future that will
@@ -69,6 +110,19 @@ format should be specified by the registered function.
 Takes the following optional arguments;
 
 =over 8
+
+=item background => BOOL
+
+If true, the job is submitted as a background request. Such a request will not
+yield any status or completion information from the server. Once submitted the
+server will not communicate about it further. In this case, the returned
+future will complete with an empty result as soon as the job is accepted by
+the server.
+
+=item priority => "high" | "low" | ""
+
+Alters the job priority on the server. If present, must be either C<"high">,
+C<"low"> or the empty string.
 
 =item on_data => CODE
 
@@ -100,6 +154,12 @@ sub submit_job
    my $func = $args{func} // croak "Required 'func' is missing in submit_job";
    my $arg  = $args{arg}  // croak "Required 'arg' is missing in submit_job";
 
+   my $bg = !!$args{background};
+
+   my $prio = $args{priority} // "";
+   $prio eq "" or $prio eq "high" or $prio eq "low" or
+      croak "Unrecognised 'priority' of '$prio'";
+
    my $state = $self->gearman_state;
 
    my $submit_f = $self->new_future;
@@ -109,12 +169,24 @@ sub submit_job
    $submit_f->on_done( sub {
       my ( $job_handle ) = @_;
 
-      $state->{gearman_job}{$job_handle} = Job(
-         $f, $args{on_data}, $args{on_warning}, $args{on_status}
-      );
+      if( $bg ) {
+         $f->done;
+      }
+      else {
+         $state->{gearman_job}{$job_handle} = Job(
+            $f, $args{on_data}, $args{on_warning}, $args{on_status}, undef
+         );
+      }
    });
 
-   $self->send_packet( SUBMIT_JOB => $func, $state->{gearman_next_id}++, $arg );
+   my $type = "SUBMIT_JOB";
+
+   $type .= "_LOW" if $prio eq "low";
+   $type .= "_HIGH" if $prio eq "high";
+
+   $type .= "_BG" if $bg;
+
+   $self->send_packet( $type => $func, $state->{gearman_next_id}++, $arg );
 
    return $f;
 }
@@ -178,6 +250,17 @@ sub on_WORK_COMPLETE
    $job->f->done( $result );
 }
 
+sub on_WORK_EXCEPTION
+{
+   my $self = shift;
+   my ( $job_handle, $exception ) = @_;
+
+   my $state = $self->gearman_state;
+
+   my $job = $state->{gearman_job}{$job_handle};
+   $job->exception = $exception;
+}
+
 sub on_WORK_FAIL
 {
    my $self = shift;
@@ -187,7 +270,8 @@ sub on_WORK_FAIL
 
    my $job = delete $state->{gearman_job}{$job_handle};
 
-   $job->f->fail( "Work failed" );
+   my $exception = $job->exception;
+   $job->f->fail( "Work failed", gearman => ( defined $exception ? ( $exception ) : () ) );
 }
 
 =head1 AUTHOR

@@ -39,6 +39,26 @@ my $worker = TestWorker->new;
    ok( $received, 'Actually received CAN_DO packet' );
 }
 
+# can_do timeout
+{
+   my $received;
+
+   no warnings 'once';
+   local *TestWorker::send_packet = sub {
+      shift;
+      my ( $type, @args ) = @_;
+
+      is( $type, "CAN_DO_TIMEOUT", '$type for sent packet by ->can_do timeout' );
+      is_deeply( \@args, [ "function", 20 ], '@args for packet sent by ->can_do timeout' );
+
+      $received++;
+   };
+
+   $worker->can_do( "function", timeout => 20 );
+
+   ok( $received, 'Actually received CAN_DO_TIMEOUT packet' );
+}
+
 my $job;
 
 # grab_job
@@ -118,6 +138,34 @@ my $job;
    );
 
    is( $finished, 1, '$finished after ->complete' );
+}
+
+# failure
+{
+   my @received;
+
+   no warnings 'once';
+   local *TestWorker::send_packet = sub {
+      my $self = shift;
+      my ( $type, @args ) = @_;
+
+      if( $type eq "GRAB_JOB" ) {
+         $self->on_JOB_ASSIGN( "a-handle", "fail", "arg" );
+      }
+      else {
+         push @received, [ $type => @args ];
+      }
+   };
+
+   my $job = $worker->grab_job->get;
+
+   $job->fail( "Here is the exception" );
+
+   is_deeply( \@received,
+      [ [ WORK_EXCEPTION => "a-handle", "Here is the exception" ],
+        [ WORK_FAIL      => "a-handle" ]
+     ],
+      'Packets received by job failure with exception' );
 }
 
 done_testing;

@@ -21,4 +21,7 @@ t/02packet.t
 t/10base.t
 t/11client.t
 t/12worker.t
+t/20prototype.t
+t/51n-g-client.t
+t/52n-g-worker.t
 t/99pod.t
